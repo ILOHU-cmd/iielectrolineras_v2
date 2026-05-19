@@ -1,0 +1,16 @@
+# cache de python
+__pycache__/
+*.pyc
+
+# carpetas de salida
+datos/output/
+datos/processed/
+
+# archivos grandes de osmnx
+datos/raw/*.graphml
+
+# vscode
+.vscode/
+
+# logs
+*.log

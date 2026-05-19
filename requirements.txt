@@ -1,0 +1,8 @@
+# dependencias del proyecto de electrolineras
+osmnx>=1.9.1
+networkx>=3.3
+scikit-learn>=1.4.0
+joblib>=1.3.0
+folium>=0.16.0
+matplotlib>=3.8.0
+openpyxl>=3.1.0
