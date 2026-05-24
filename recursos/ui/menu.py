@@ -6,7 +6,7 @@ import random
 from datos.data import ELECTROLINERAS, PUNTOS_REFERENCIA, VEHICULOS
 from recursos.grafos.constructor import construir_grafo
 from recursos.grafos.visualizacion import generar_grafico_dispersion, generar_mapa
-from recursos.ml.modelo import entrenar_modelos, nombre_modelo, predecir_electrolinera
+from recursos.ml.modelo import entrenar_modelos, nombre_modelo, recomendar_nuevas_electrolineras
 from recursos.simulacion.simulacion import ejecutar_simulacion, imprimir_resumen
 from recursos.utilidades.archivos import (
     abrir_archivo,
@@ -16,7 +16,7 @@ from recursos.utilidades.archivos import (
     leer_json,
     leer_semillas_guardadas,
 )
-from recursos.utilidades.validacion import confirmar, leer_decimal, leer_entero, limpiar_pantalla
+from recursos.utilidades.validacion import confirmar, leer_entero, limpiar_pantalla
 
 
 def mostrar_encabezado(grafo, estadisticas, modelos):
@@ -53,9 +53,9 @@ def mostrar_menu():
     print("4. Ver resumen estadistico")
     print("5. Generar mapa interactivo")
     print("6. Entrenar modelos de Machine Learning")
-    print("7. Predecir electrolinera con ML")
-    print("8. Exportar historial a Excel")
-    print("9. Comparar Dijkstra y ML")
+    print("7. Exportar historial a Excel")
+    print("8. Comparar Dijkstra y ML")
+    print("9. Recomendar nuevas electrolineras con ML")
     print("0. Salir")
     print()
 
@@ -170,31 +170,6 @@ def obtener_semilla(cantidad):
 
         posicion = leer_entero("seleccione una semilla: ", 1, len(semillas))
         return semillas[posicion - 1]["semilla"]
-
-
-def pedir_vehiculo_numero():
-    # retorna el numero del vehiculo para el modelo de machine learning
-    print()
-    print("seleccione vehiculo")
-    print("1. tesla model y long range")
-    print("2. byd dolphin surf")
-    opcion = leer_entero("opcion: ", 1, 2)
-
-    if opcion == 1:
-        return 0
-    else:
-        return 1
-
-
-def obtener_nombre_electrolinera(id_electrolinera):
-    # busca una electrolinera por su id
-    i = 0
-    while i < len(ELECTROLINERAS):
-        if ELECTROLINERAS[i]["id"] == id_electrolinera:
-            return ELECTROLINERAS[i]["nombre"]
-        i = i + 1
-
-    return "no encontrada"
 
 
 def preguntar_abrir(ruta):
@@ -314,7 +289,7 @@ def ejecutar_menu():
                         preguntar_abrir(ruta)
 
             case "5":
-                ruta = generar_mapa()
+                ruta = generar_mapa(estadisticas, grafo)
                 preguntar_abrir(ruta)
 
             case "6":
@@ -327,18 +302,6 @@ def ejecutar_menu():
 
             case "7":
                 print()
-                print("prediccion de electrolinera")
-                nivel = leer_decimal("nivel actual de bateria (0-100): ", 0, 100)
-                distancia = leer_decimal("distancia recorrida en metros: ", 0)
-                vehiculo_numero = pedir_vehiculo_numero()
-                prediccion, tiempo = predecir_electrolinera(nivel, distancia, vehiculo_numero)
-
-                if prediccion != "":
-                    print("electrolinera predicha:", prediccion, "-", obtener_nombre_electrolinera(prediccion))
-                    print("tiempo de prediccion:", round(tiempo, 3), "ms")
-
-            case "8":
-                print()
                 print("exportar historial")
                 filas = leer_csv("historial_recargas")
 
@@ -348,8 +311,13 @@ def ejecutar_menu():
                     ruta = guardar_xlsx("historial_recargas", filas)
                     preguntar_abrir(ruta)
 
-            case "9":
+            case "8":
                 mostrar_comparacion(modelos, estadisticas)
+
+            case "9":
+                print()
+                print("recomendacion de nuevas electrolineras")
+                recomendar_nuevas_electrolineras()
 
             case "0":
                 print("programa finalizado.")

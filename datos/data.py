@@ -100,11 +100,7 @@ lugares_busqueda = [
         "nombre": "Promotores del Oriente",
         "lat": 7.0851407748093775, "lon": -73.1645703641285,
         "potencia_kw": 50
-    },
-    {   "id": "E8",
-        "nombre": "punto prueba",
-        "lat": 7.084012005329736, "lon": -73.15162665059749,
-        "potencia_kw": 50}
+    }
 ]
 
 ELECTROLINERAS = []

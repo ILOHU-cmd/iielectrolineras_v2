@@ -28,7 +28,8 @@ def dijkstra(grafo, origen, destino):
         ruta = nx.shortest_path(grafo, origen, destino, weight="length")
         distancia = nx.shortest_path_length(grafo, origen, destino, weight="length")
     except nx.NetworkXNoPath:
-        ruta, distancia = dijkstra_no_dirigido(grafo, origen, destino)
+        ruta = []
+        distancia = float("inf")
     except nx.NodeNotFound:
         ruta = []
         distancia = float("inf")
@@ -36,25 +37,6 @@ def dijkstra(grafo, origen, destino):
     fin = time.perf_counter()
     tiempo_ms = (fin - inicio) * 1000
     return ruta, distancia, tiempo_ms
-
-
-def dijkstra_no_dirigido(grafo, origen, destino):
-    # algunos puntos quedan en vias de un solo sentido; este respaldo evita descartarlos
-    try:
-        if "grafo_no_dirigido" not in grafo.graph:
-            grafo.graph["grafo_no_dirigido"] = grafo.to_undirected()
-
-        grafo_no_dirigido = grafo.graph["grafo_no_dirigido"]
-        ruta = nx.shortest_path(grafo_no_dirigido, origen, destino, weight="length")
-        distancia = nx.shortest_path_length(grafo_no_dirigido, origen, destino, weight="length")
-    except nx.NetworkXNoPath:
-        ruta = []
-        distancia = float("inf")
-    except nx.NodeNotFound:
-        ruta = []
-        distancia = float("inf")
-
-    return ruta, distancia
 
 
 def electrolinera_mas_cercana(grafo, nodo_actual, nodos_electrolineras):

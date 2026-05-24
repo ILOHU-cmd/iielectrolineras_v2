@@ -46,15 +46,93 @@ def crear_estado_vehiculos():
 
 def consumir_bateria(vehiculo, distancia_m):
     # se calcula el gasto de energia usando el consumo kwh por cada 100 km
-    distancia_km = distancia_m / METROS_POR_KM
-    kwh_usados = (vehiculo["consumo_kwh_100km"] / 100.0) * distancia_km
-    porcentaje_usado = (kwh_usados / vehiculo["bateria_kwh"]) * 100.0
+    porcentaje_usado = calcular_porcentaje_bateria_usado(vehiculo, distancia_m)
     vehiculo["nivel_bateria"] = vehiculo["nivel_bateria"] - porcentaje_usado
 
     if vehiculo["nivel_bateria"] < 0:
         vehiculo["nivel_bateria"] = 0.0
 
-    vehiculo["km_total"] = vehiculo["km_total"] + distancia_km
+    vehiculo["km_total"] = vehiculo["km_total"] + (distancia_m / METROS_POR_KM)
+
+
+def calcular_porcentaje_bateria_usado(vehiculo, distancia_m):
+    distancia_km = distancia_m / METROS_POR_KM
+    kwh_usados = (vehiculo["consumo_kwh_100km"] / 100.0) * distancia_km
+    return (kwh_usados / vehiculo["bateria_kwh"]) * 100.0
+
+
+def obtener_longitud_arista(grafo, nodo_a, nodo_b):
+    # obtiene la longitud menor entre dos nodos consecutivos de una ruta
+    datos_arista = grafo.get_edge_data(nodo_a, nodo_b)
+
+    if datos_arista is None:
+        datos_arista = grafo.get_edge_data(nodo_b, nodo_a)
+
+    if datos_arista is None:
+        return 0.0
+
+    if "length" in datos_arista:
+        return float(datos_arista.get("length", 0.0))
+
+    mejor_longitud = None
+
+    for clave, datos in datos_arista.items():
+        longitud = datos.get("length", 0.0)
+
+        if mejor_longitud is None or longitud < mejor_longitud:
+            mejor_longitud = longitud
+
+    if mejor_longitud is None:
+        return 0.0
+
+    return float(mejor_longitud)
+
+
+def avanzar_vehiculo_por_ruta(grafo, vehiculo, ruta, distancia_total_m, limite_recarga):
+    # simula el consumo tramo por tramo y detecta el nodo donde baja al limite
+    resultado = {
+        "recarga_activada": False,
+        "nodo_descarga": None,
+        "distancia_hasta_descarga_m": distancia_total_m,
+    }
+
+    if len(ruta) < 2:
+        consumir_bateria(vehiculo, distancia_total_m)
+        return resultado
+
+    distancia_acumulada = 0.0
+    i = 0
+
+    while i < len(ruta) - 1:
+        nodo_actual = ruta[i]
+        nodo_siguiente = ruta[i + 1]
+        longitud_tramo = obtener_longitud_arista(grafo, nodo_actual, nodo_siguiente)
+
+        if longitud_tramo <= 0:
+            i = i + 1
+            continue
+
+        bateria_antes = vehiculo["nivel_bateria"]
+        consumo_tramo = calcular_porcentaje_bateria_usado(vehiculo, longitud_tramo)
+        bateria_despues = bateria_antes - consumo_tramo
+
+        if bateria_despues < 0:
+            bateria_despues = 0.0
+
+        vehiculo["nivel_bateria"] = bateria_despues
+        vehiculo["km_total"] = vehiculo["km_total"] + (longitud_tramo / METROS_POR_KM)
+        distancia_acumulada = distancia_acumulada + longitud_tramo
+
+        if bateria_despues <= limite_recarga:
+            resultado["recarga_activada"] = True
+            resultado["nodo_descarga"] = nodo_siguiente
+            resultado["distancia_hasta_descarga_m"] = distancia_acumulada
+            return resultado
+
+        i = i + 1
+
+    resultado["distancia_hasta_descarga_m"] = distancia_acumulada
+    return resultado
 
 
 def necesita_recarga(vehiculo, limite_recarga):
@@ -89,6 +167,21 @@ def obtener_nombre_electrolinera(id_electrolinera):
         i = i + 1
 
     return id_electrolinera
+
+
+def coordenadas_nodo(grafo, nodo):
+    # devuelve las coordenadas exactas del nodo OSM donde quedo el vehiculo
+    if grafo is None or nodo is None:
+        return None, None
+
+    datos = grafo.nodes[nodo]
+    lat = datos.get("y")
+    lon = datos.get("x")
+
+    if lat is None or lon is None:
+        return None, None
+
+    return float(lat), float(lon)
 
 
 def crear_lista_referencias(nodos_referencia):
@@ -204,7 +297,13 @@ def ejecutar_simulacion(grafo, cantidad_recorridos, semilla):
             # asi el total final queda igual a la cantidad solicitada
             continue
 
-        consumir_bateria(vehiculo, distancia_m)
+        resultado_consumo = avanzar_vehiculo_por_ruta(
+            grafo,
+            vehiculo,
+            ruta,
+            distancia_m,
+            limite_recarga,
+        )
 
         detalle = {
             "numero": i + 1,
@@ -212,21 +311,26 @@ def ejecutar_simulacion(grafo, cantidad_recorridos, semilla):
             "origen": origen_ref["nombre"],
             "destino": destino_ref["nombre"],
             "distancia_km": round(distancia_m / METROS_POR_KM, 3),
+            "distancia_hasta_descarga_km": round(
+                resultado_consumo["distancia_hasta_descarga_m"] / METROS_POR_KM,
+                3,
+            ),
             "bateria_final": round(vehiculo["nivel_bateria"], 2),
             "limite_recarga": round(limite_recarga, 2),
             "recarga_activada": False,
             "tiempo_dijkstra_ms": round(tiempo_dijkstra, 3),
         }
 
-        if necesita_recarga(vehiculo, limite_recarga):
+        if resultado_consumo["recarga_activada"]:
             registrar_evento_recarga(
                 grafo,
                 vehiculo,
-                ruta[-1],
+                resultado_consumo["nodo_descarga"],
                 nodos_electrolineras,
                 detalle,
                 estadisticas,
                 tiempo_base + timedelta(minutes=i * 25),
+                resultado_consumo["distancia_hasta_descarga_m"],
             )
 
         estadisticas["recorridos"].append(detalle)
@@ -267,7 +371,16 @@ def exportar_resumen_txt(estadisticas):
     guardar_txt("resumen_simulacion", lineas)
 
 
-def registrar_evento_recarga(grafo, vehiculo, nodo_actual, nodos_electrolineras, detalle, estadisticas, fecha):
+def registrar_evento_recarga(
+    grafo,
+    vehiculo,
+    nodo_actual,
+    nodos_electrolineras,
+    detalle,
+    estadisticas,
+    fecha,
+    distancia_hasta_descarga_m,
+):
     # se busca la electrolinera mas cercana y se guarda el evento de recarga
     resultado = electrolinera_mas_cercana(grafo, nodo_actual, nodos_electrolineras)
     id_electrolinera = resultado[0]
@@ -278,7 +391,8 @@ def registrar_evento_recarga(grafo, vehiculo, nodo_actual, nodos_electrolineras,
         return
 
     nombre_electrolinera = obtener_nombre_electrolinera(id_electrolinera)
-    punto_baja = detalle["destino"]
+    punto_baja = detalle["origen"] + " -> " + detalle["destino"]
+    lat_baja, lon_baja = coordenadas_nodo(grafo, nodo_actual)
 
     evento = {
         "timestamp": fecha.strftime("%Y-%m-%d %H:%M:%S"),
@@ -287,8 +401,13 @@ def registrar_evento_recarga(grafo, vehiculo, nodo_actual, nodos_electrolineras,
         "electrolinera_id": id_electrolinera,
         "electrolinera_nombre": nombre_electrolinera,
         "punto_bateria_baja": punto_baja,
+        "lat_bateria_baja": round(lat_baja, 7) if lat_baja is not None else "",
+        "lon_bateria_baja": round(lon_baja, 7) if lon_baja is not None else "",
+        "nodo_bateria_baja": nodo_actual,
         "nivel_bateria_llegada": round(vehiculo["nivel_bateria"], 2),
-        "distancia_recorrida_m": round(distancia_carga, 1),
+        "distancia_recorrida_m": round(distancia_hasta_descarga_m, 1),
+        "distancia_a_electrolinera_m": round(distancia_carga, 1),
+        "hora": fecha.hour,
     }
 
     agregar_recarga(evento)
@@ -321,9 +440,41 @@ def registrar_evento_recarga(grafo, vehiculo, nodo_actual, nodos_electrolineras,
     else:
         estadisticas["puntos_candidatos"][punto_baja] = 1
 
+    if "puntos_candidatos_detalle" not in estadisticas:
+        estadisticas["puntos_candidatos_detalle"] = {}
+
+    clave_coord = punto_baja
+    if lat_baja is not None and lon_baja is not None:
+        clave_coord = str(round(lat_baja, 5)) + "," + str(round(lon_baja, 5))
+
+    if clave_coord not in estadisticas["puntos_candidatos_detalle"]:
+        estadisticas["puntos_candidatos_detalle"][clave_coord] = {
+            "punto": punto_baja,
+            "lat": round(lat_baja, 7) if lat_baja is not None else "",
+            "lon": round(lon_baja, 7) if lon_baja is not None else "",
+            "eventos": 0,
+            "distancia_total_m": 0.0,
+            "bateria_total": 0.0,
+        }
+
+    estadisticas["puntos_candidatos_detalle"][clave_coord]["eventos"] = (
+        estadisticas["puntos_candidatos_detalle"][clave_coord]["eventos"] + 1
+    )
+    estadisticas["puntos_candidatos_detalle"][clave_coord]["distancia_total_m"] = round(
+        estadisticas["puntos_candidatos_detalle"][clave_coord]["distancia_total_m"] + distancia_carga,
+        1,
+    )
+    estadisticas["puntos_candidatos_detalle"][clave_coord]["bateria_total"] = round(
+        estadisticas["puntos_candidatos_detalle"][clave_coord]["bateria_total"] + vehiculo["nivel_bateria"],
+        2,
+    )
+
     detalle["recarga_activada"] = True
     detalle["electrolinera_usada"] = nombre_electrolinera
     detalle["distancia_a_electrolinera_km"] = round(distancia_carga / METROS_POR_KM, 3)
+    detalle["lat_bateria_baja"] = round(lat_baja, 7) if lat_baja is not None else ""
+    detalle["lon_bateria_baja"] = round(lon_baja, 7) if lon_baja is not None else ""
+    detalle["nodo_bateria_baja"] = nodo_actual
     detalle["tiempo_busqueda_ms"] = round(tiempo_busqueda, 3)
 
 
@@ -407,7 +558,16 @@ def imprimir_resumen(estadisticas):
     else:
         i = 0
         while i < len(candidatos):
-            print(str(i + 1) + ".", candidatos[i][0], "->", candidatos[i][1], "eventos de bateria baja")
+            nombre = candidatos[i][0]
+            coordenadas = ""
+            detalles = estadisticas.get("puntos_candidatos_detalle", {})
+
+            for clave, info in detalles.items():
+                if info.get("punto") == nombre:
+                    coordenadas = " | coord: " + str(info.get("lat", "")) + ", " + str(info.get("lon", ""))
+                    break
+
+            print(str(i + 1) + ".", nombre, "->", candidatos[i][1], "eventos de bateria baja" + coordenadas)
             i = i + 1
 
     print("=" * 60)

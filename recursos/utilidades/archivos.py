@@ -124,9 +124,39 @@ def agregar_recarga(evento):
         "electrolinera_id",
         "electrolinera_nombre",
         "punto_bateria_baja",
+        "lat_bateria_baja",
+        "lon_bateria_baja",
+        "nodo_bateria_baja",
         "nivel_bateria_llegada",
         "distancia_recorrida_m",
+        "distancia_a_electrolinera_m",
+        "hora",
     ]
+
+    if existe:
+        with open(ruta, "r", encoding="utf-8") as archivo:
+            lector = csv.DictReader(archivo)
+            campos_actuales = lector.fieldnames
+            filas_anteriores = []
+
+            for fila in lector:
+                filas_anteriores.append(fila)
+
+        if campos_actuales != campos:
+            with open(ruta, "w", newline="", encoding="utf-8") as archivo:
+                escritor = csv.DictWriter(archivo, fieldnames=campos)
+                escritor.writeheader()
+
+                i = 0
+                while i < len(filas_anteriores):
+                    fila_limpia = {}
+                    j = 0
+                    while j < len(campos):
+                        campo = campos[j]
+                        fila_limpia[campo] = filas_anteriores[i].get(campo, "")
+                        j = j + 1
+                    escritor.writerow(fila_limpia)
+                    i = i + 1
 
     with open(ruta, "a", newline="", encoding="utf-8") as archivo:
         escritor = csv.DictWriter(archivo, fieldnames=campos)
