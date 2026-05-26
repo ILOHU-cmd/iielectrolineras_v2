@@ -7,9 +7,9 @@ import osmnx as ox
 from datos.data import ELECTROLINERAS, PUNTOS_REFERENCIA
 
 
-# =========================================================
+
 # CONFIGURACION GENERAL
-# =========================================================
+
 
 CIUDADES = [
     "Bucaramanga, Santander, Colombia",
@@ -163,9 +163,9 @@ def descargar_zona_osm(zona):
     return ox.graph_from_polygon(geometria, network_type="drive")
 
 
-# =========================================================
+
 # MARCAR ELECTROLINERAS Y PUNTOS
-# =========================================================
+
 
 def marcar_nodos_especiales(grafo):
     """
@@ -257,9 +257,9 @@ def actualizar_datos_compatibilidad(datos):
         datos["nombre_lugar"] = lugar["nombre"]
 
 
-# =========================================================
+
 # FUNCIONES AUXILIARES
-# =========================================================
+
 
 def obtener_nodos_electrolineras(grafo):
     """

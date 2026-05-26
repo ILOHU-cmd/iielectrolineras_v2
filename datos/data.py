@@ -14,16 +14,16 @@ CIUDADES = [
 ]
 
 def geocodificar(nombre, lat_manual=None, lon_manual=None):
-    # =====================================================
+   
     # PRIORIDAD 1: usar coordenadas manuales si existen
-    # =====================================================
+    
 
     if lat_manual is not None and lon_manual is not None:
         return lat_manual, lon_manual, "Manual"
 
-    # =====================================================
+ 
     # PRIORIDAD 2: intentar buscar en OSM
-    # =====================================================
+ 
 
     i = 0
 
@@ -41,16 +41,16 @@ def geocodificar(nombre, lat_manual=None, lon_manual=None):
 
         i += 1
 
-    # =====================================================
+ 
     # SI NO ENCUENTRA NADA
-    # =====================================================
+ 
 
     return None
 
 
-# =========================================================
+
 # ELECTROLINERAS
-# =========================================================
+
 
 lugares_busqueda = [
     {
@@ -131,9 +131,9 @@ for lugar in lugares_busqueda:
         print("ERROR " + lugar["id"] + " | " + lugar["nombre"] + ": no encontrado en osm y sin coordenadas manuales")
 
 
-# =========================================================
+
 # PUNTOS FIJOS DE REFERENCIA
-# =========================================================
+
 
 lugares_referencia = [
     {
@@ -207,9 +207,9 @@ for punto in lugares_referencia:
         print("ERROR " + punto["id"] + " | " + punto["nombre"] + ": no encontrado en osm y sin coordenadas manuales")
 
 
-# =========================================================
+
 # VEHICULOS ELECTRICOS
-# =========================================================
+
 
 VEHICULOS = {
     "tesla_modely": {

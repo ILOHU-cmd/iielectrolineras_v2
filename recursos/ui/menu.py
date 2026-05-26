@@ -227,8 +227,9 @@ def mostrar_comparacion(modelos, estadisticas):
 
     print()
     print("comparacion dijkstra y machine learning")
-    print("dijkstra calcula la ruta exacta usando el peso de las aristas.")
-    print("machine learning predice una electrolinera usando datos historicos.")
+    print("dijkstra es el metodo exacto para calcular rutas en el grafo dirigido.")
+    print("floyd-warshall no se usa porque el grafo vial es grande y su costo es muy alto.")
+    print("machine learning aprende del historial y se evalua con exactitud, f1 y tiempo.")
     print()
 
     promedio_dijkstra = calcular_promedio_dijkstra(estadisticas)

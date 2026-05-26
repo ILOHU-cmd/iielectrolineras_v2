@@ -175,31 +175,6 @@ def entrenar_modelos():
     return resultados
 
 
-def predecir_electrolinera(nivel_bateria, distancia_m, vehiculo_numero):
-    # carga el modelo random forest y predice la electrolinera
-    if not SKLEARN_DISPONIBLE:
-        print("scikit-learn o joblib no estan instalados.")
-        return "", 0
-
-    ruta = ruta_modelo("modelo_random_forest.pkl")
-
-    try:
-        paquete = joblib.load(ruta)
-    except FileNotFoundError:
-        print("no existe un modelo entrenado. use primero la opcion 6.")
-        return "", 0
-
-    modelo = paquete["modelo"]
-    datos = [[nivel_bateria, distancia_m, vehiculo_numero]]
-
-    inicio = time.perf_counter()
-    prediccion = modelo.predict(datos)[0]
-    fin = time.perf_counter()
-    tiempo_ms = (fin - inicio) * 1000
-
-    return prediccion, tiempo_ms
-
-
 def agrupar_eventos_bateria_baja():
     # agrupa el historial por coordenada exacta aproximada del nodo donde bajo la bateria
     filas = leer_csv("historial_recargas")
